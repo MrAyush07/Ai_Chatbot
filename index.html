@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Chat Bot</title>
+  <link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg: #0f1117;
+      --surface: #1a1d27;
+      --surface2: #22263a;
+      --accent: #6c63ff;
+      --accent2: #a78bfa;
+      --text: #e2e8f0;
+      --text-muted: #94a3b8;
+      --user-bubble: #6c63ff;
+      --ai-bubble: #1e2235;
+      --border: rgba(108,99,255,0.18);
+      --shadow: 0 4px 32px rgba(0,0,0,0.45);
+    }
+    * { margin:0; padding:0; box-sizing:border-box; }
+
+    body {
+      width: 100%;
+      height: 100vh;
+      background: var(--bg);
+      display: flex;
+      flex-direction: column;
+      font-family: 'DM Sans', sans-serif;
+      color: var(--text);
+      overflow: hidden;
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 28px;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      flex-shrink: 0;
+    }
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+    .header-avatar {
+      width: 42px; height: 42px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 0 18px rgba(108,99,255,0.45);
+      flex-shrink: 0;
+    }
+    header h1 {
+      font-family: 'Syne', sans-serif;
+      font-size: 1.15rem;
+      font-weight: 700;
+      letter-spacing: 0.02em;
+      color: var(--text);
+    }
+    header p {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      margin-top: 1px;
+    }
+    .status-dot {
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: #34d399;
+      display: inline-block;
+      margin-right: 5px;
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+      0%,100% { opacity:1; } 50% { opacity:0.4; }
+    }
+
+    .key-btn {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 6px 12px;
+      border-radius: 8px;
+      font-size: 0.75rem;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .key-btn:hover {
+      color: #fff;
+      border-color: var(--accent);
+    }
+
+    /* ── Chat Area ── */
+    .chat-container {
+      flex: 1;
+      overflow-y: auto;
+      padding: 28px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 22px;
+      scroll-behavior: smooth;
+    }
+    .chat-container::-webkit-scrollbar { width: 5px; }
+    .chat-container::-webkit-scrollbar-track { background: transparent; }
+    .chat-container::-webkit-scrollbar-thumb { background: var(--surface2); border-radius: 10px; }
+
+    /* ── Bubbles ── */
+    .ai-chat-box, .user-chat-box {
+      display: flex;
+      align-items: flex-end;
+      gap: 10px;
+      max-width: 75%;
+      animation: fadeUp 0.35s ease both;
+    }
+    @keyframes fadeUp {
+      from { opacity:0; transform: translateY(14px); }
+      to   { opacity:1; transform: translateY(0); }
+    }
+    .ai-chat-box { align-self: flex-start; }
+    .user-chat-box { align-self: flex-end; flex-direction: row-reverse; }
+
+    .bubble-avatar {
+      width: 34px; height: 34px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px; flex-shrink: 0;
+      box-shadow: var(--shadow);
+    }
+    .bubble-avatar.ai {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+    }
+    .bubble-avatar.user {
+      background: linear-gradient(135deg, #f59e0b, #fb923c);
+    }
+
+    .ai-chat-area, .user-chat-area {
+      padding: 14px 18px;
+      border-radius: 18px;
+      font-size: 0.95rem;
+      line-height: 1.65;
+      box-shadow: var(--shadow);
+      word-break: break-word;
+    }
+    .ai-chat-area {
+      background: var(--ai-bubble);
+      border: 1px solid var(--border);
+      border-bottom-left-radius: 4px;
+      color: var(--text);
+    }
+    .user-chat-area {
+      background: var(--user-bubble);
+      border-bottom-right-radius: 4px;
+      color: #fff;
+    }
+    .chooseimg {
+      max-width: 200px;
+      border-radius: 12px;
+      margin-top: 8px;
+      display: block;
+    }
+
+    /* ── Loading dots ── */
+    .typing-indicator {
+      display: flex; gap: 5px; align-items: center; padding: 4px 0;
+    }
+    .typing-indicator span {
+      width: 7px; height: 7px;
+      border-radius: 50%;
+      background: var(--accent2);
+      animation: bounce 1.2s infinite;
+    }
+    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
+    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes bounce {
+      0%,80%,100% { transform: translateY(0); opacity:0.5; }
+      40% { transform: translateY(-6px); opacity:1; }
+    }
+
+    /* ── Prompt Bar ── */
+    .prompt-area {
+      flex-shrink: 0;
+      padding: 14px 20px 18px;
+      background: var(--surface);
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    #prompt {
+      flex: 1;
+      height: 52px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 0 18px;
+      color: var(--text);
+      font-size: 0.95rem;
+      font-family: 'DM Sans', sans-serif;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #prompt::placeholder { color: var(--text-muted); }
+    #prompt:focus { border-color: var(--accent); }
+
+    .icon-btn {
+      width: 52px; height: 52px;
+      border-radius: 14px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      transition: all 0.2s;
+      flex-shrink: 0;
+    }
+    .icon-btn:hover { background: var(--accent); color: #fff; border-color: var(--accent); }
+    .icon-btn.has-image { background: var(--accent); color: #fff; border-color: var(--accent); }
+
+    #submit {
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border: none;
+      color: #fff;
+    }
+    #submit:hover { opacity: 0.85; transform: scale(1.04); }
+
+    /* ── Image preview pill ── */
+    #img-preview-wrap {
+      display: none;
+      align-items: center;
+      gap: 8px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 6px 10px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    #img-preview-wrap.visible { display: flex; }
+    #img-preview-thumb {
+      width: 32px; height: 32px;
+      border-radius: 6px; object-fit: cover;
+    }
+    #img-clear {
+      cursor: pointer; font-size: 16px;
+      color: var(--text-muted);
+      line-height: 1;
+    }
+    #img-clear:hover { color: #f87171; }
+
+    @media (max-width: 600px) {
+      .ai-chat-box, .user-chat-box { max-width: 90%; }
+      header { padding: 14px 16px; }
+      .chat-container { padding: 18px 12px; }
+      .prompt-area { padding: 10px 12px 14px; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-left">
+    <div class="header-avatar">🤖</div>
+    <div>
+      <h1>AI Assistant</h1>
+      <p><span class="status-dot"></span>Online · Powered by Gemini</p>
+    </div>
+  </div>
+  <button class="key-btn" id="set-key-btn">API Key</button>
+</header>
+
+<div class="chat-container" id="chat-container">
+  <div class="ai-chat-box">
+    <div class="bubble-avatar ai">🤖</div>
+    <div class="ai-chat-area">
+      Hello! I'm your AI assistant. How can I help you today? 😊
+    </div>
+  </div>
+</div>
+
+<div class="prompt-area">
+  <div id="img-preview-wrap">
+    <img id="img-preview-thumb" src="" alt="preview" />
+    <span>Image attached</span>
+    <span id="img-clear" title="Remove">✕</span>
+  </div>
+  <input type="text" id="prompt" placeholder="Message AI Assistant..." autocomplete="off" />
+  <label class="icon-btn" id="image-btn" title="Attach image">
+    📎
+    <input type="file" id="image-input" accept="image/*" hidden />
+  </label>
+  <button class="icon-btn" id="submit" title="Send">➤</button>
+</div>
+
+<script>
+  /* ── DOM refs ── */
+  const promptEl       = document.getElementById('prompt');
+  const submitBtn      = document.getElementById('submit');
+  const chatContainer  = document.getElementById('chat-container');
+  const imageBtn       = document.getElementById('image-btn');
+  const imageInput     = document.getElementById('image-input');
+  const imgPreviewWrap = document.getElementById('img-preview-wrap');
+  const imgPreviewThumb= document.getElementById('img-preview-thumb');
+  const imgClear       = document.getElementById('img-clear');
+  const setKeyBtn      = document.getElementById('set-key-btn');
+
+  /* ── API Key Management ──
+     Keys starting with AIzaSy... are stored locally in the browser so
+     GitHub will not scan or revoke your credentials.                        */
+  function getApiKey() {
+    let key = localStorage.getItem("gemini_api_key");
+    if (!key) {
+      key = prompt("Enter your Google Gemini API Key (starts with AIzaSy...):");
+      if (key && key.trim().startsWith("AIzaSy")) {
+        localStorage.setItem("gemini_api_key", key.trim());
+      } else if (key) {
+        alert("Invalid format: Gemini API keys must start with AIzaSy.");
+        return null;
+      }
+    }
+    return key ? key.trim() : null;
+  }
+
+  setKeyBtn.addEventListener('click', () => {
+    const currentKey = localStorage.getItem("gemini_api_key") || "";
+    const newKey = prompt("Enter a new Gemini API Key:", currentKey);
+    if (newKey !== null && newKey.trim()) {
+      if (newKey.trim().startsWith("AIzaSy")) {
+        localStorage.setItem("gemini_api_key", newKey.trim());
+        alert("API Key updated successfully.");
+      } else {
+        alert("Invalid format: Gemini API keys must start with AIzaSy.");
+      }
+    }
+  });
+
+  /* ── State ── */
+  let userFile = { mime_type: null, data: null };
+
+  /* ── Helpers ── */
+  function scrollBottom() {
+    chatContainer.scrollTo({ top: chatContainer.scrollHeight, behavior: 'smooth' });
+  }
+
+  function createBubble(html, cls) {
+    const div = document.createElement('div');
+    div.innerHTML = html;
+    div.className = cls;
+    return div;
+  }
+
+  /* ── Generate AI response ── */
+  async function generateResponse(aiBox) {
+    const textEl = aiBox.querySelector('.ai-chat-area');
+    const apiKey = getApiKey();
+
+    if (!apiKey) {
+      textEl.textContent = '⚠️ API Key required. Click "API Key" at top right to enter a valid AIzaSy... key.';
+      scrollBottom();
+      return;
+    }
+
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+    const now = new Date();
+    const dateStr = now.toLocaleString('en-US', {
+      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit', timeZoneName: 'short'
+    });
+
+    const systemNote = `You are a helpful, friendly AI assistant. Current date/time: ${dateStr}.`;
+    const fullPrompt = `${systemNote}\n\nUser: ${window._currentMsg}`;
+
+    const parts = [{ text: fullPrompt }];
+    if (userFile.data) parts.push({ inline_data: userFile });
+
+    try {
+      const res = await fetch(apiUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts }] })
+      });
+      const data = await res.json();
+
+      if (data.error) {
+        textEl.textContent = `⚠️ API Error: ${data.error.message}`;
+        return;
+      }
+
+      const reply = data.candidates[0].content.parts[0].text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+      textEl.innerHTML = reply;
+    } catch (err) {
+      console.error(err);
+      textEl.textContent = '⚠️ Something went wrong. Please check console or network tab.';
+    } finally {
+      scrollBottom();
+      userFile = {};
+      imgPreviewWrap.classList.remove('visible');
+      imageBtn.classList.remove('has-image');
+      imgPreviewThumb.src = '';
+    }
+  }
+
+  /* ── Handle send ── */
+  function handleSend(msg) {
+    msg = msg.trim();
+    if (!msg) return;
+    window._currentMsg = msg;
+
+    /* User bubble */
+    const userHtml = `
+      <div class="bubble-avatar user">🧑</div>
+      <div class="user-chat-area">
+        ${msg}
+        ${userFile.data ? `<img src="data:${userFile.mime_type};base64,${userFile.data}" class="chooseimg" />` : ''}
+      </div>`;
+    chatContainer.appendChild(createBubble(userHtml, 'user-chat-box'));
+    promptEl.value = '';
+    scrollBottom();
+
+    /* AI typing bubble */
+    setTimeout(() => {
+      const aiHtml = `
+        <div class="bubble-avatar ai">🤖</div>
+        <div class="ai-chat-area">
+          <div class="typing-indicator"><span></span><span></span><span></span></div>
+        </div>`;
+      const aiBox = createBubble(aiHtml, 'ai-chat-box');
+      chatContainer.appendChild(aiBox);
+      scrollBottom();
+      generateResponse(aiBox);
+    }, 400);
+  }
+
+  /* ── Events ── */
+  submitBtn.addEventListener('click', () => handleSend(promptEl.value));
+  promptEl.addEventListener('keydown', e => { if (e.key === 'Enter') handleSend(promptEl.value); });
+
+  imageInput.addEventListener('change', () => {
+    const file = imageInput.files[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = e => {
+      const b64 = e.target.result.split(',')[1];
+      userFile = { mime_type: file.type, data: b64 };
+      imgPreviewThumb.src = e.target.result;
+      imgPreviewWrap.classList.add('visible');
+      imageBtn.classList.add('has-image');
+    };
+    reader.readAsDataURL(file);
+  });
+
+  imgClear.addEventListener('click', () => {
+    userFile = {};
+    imageInput.value = '';
+    imgPreviewThumb.src = '';
+    imgPreviewWrap.classList.remove('visible');
+    imageBtn.classList.remove('has-image');
+  });
+</script>
+</body>
+</html>
